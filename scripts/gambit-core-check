@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+
+import argparse
+import tempfile
+import os
+import json
+import numpy as np
+import logging
+import sqlite3
+from gambit.sigs import load_signatures
+
+"""
+This file, and only this file, is licensed under the GNU Lesser General Public License v3.0.
+All other files in this repository are licenced under the GNU General Public License v3.0.
+
+                   GNU LESSER GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
+
+  0. Additional Definitions.
+
+  As used herein, "this License" refers to version 3 of the GNU Lesser
+General Public License, and the "GNU GPL" refers to version 3 of the GNU
+General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+  An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library.
+
+  A "Combined Work" is a work produced by combining or linking an
+Application with the Library.  The particular version of the Library
+with which the Combined Work was made is also called the "Linked
+Version".
+
+  The "Minimal Corresponding Source" for a Combined Work means the
+Corresponding Source for the Combined Work, excluding any source code
+for portions of the Combined Work that, considered in isolation, are
+based on the Application, and not on the Linked Version.
+
+  The "Corresponding Application Code" for a Combined Work means the
+object code and/or source code for the Application, including any data
+and utility programs needed for reproducing the Combined Work from the
+Application, but excluding the System Libraries of the Combined Work.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  You may convey a covered work under sections 3 and 4 of this License
+without being bound by section 3 of the GNU GPL.
+
+  2. Conveying Modified Versions.
+
+  If you modify a copy of the Library, and, in your modifications, a
+facility refers to a function or data to be supplied by an Application
+that uses the facility (other than as an argument passed when the
+facility is invoked), then you may convey a copy of the modified
+version:
+
+   a) under this License, provided that you make a good faith effort to
+   ensure that, in the event an Application does not supply the
+   function or data, the facility still operates, and performs
+   whatever part of its purpose remains meaningful, or
+
+   b) under the GNU GPL, with none of the additional permissions of
+   this License applicable to that copy.
+
+  3. Object Code Incorporating Material from Library Header Files.
+
+  The object code form of an Application may incorporate material from
+a header file that is part of the Library.  You may convey such object
+code under terms of your choice, provided that, if the incorporated
+material is not limited to numerical parameters, data structure
+layouts and accessors, or small macros, inline functions and templates
+(ten or fewer lines in length), you do both of the following:
+
+   a) Give prominent notice with each copy of the object code that the
+   Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the object code with a copy of the GNU GPL and this license
+   document.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
+
+   a) Give prominent notice with each copy of the Combined Work that
+   the Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the Combined Work with a copy of the GNU GPL and this license
+   document.
+
+   c) For a Combined Work that displays copyright notices during
+   execution, include the copyright notice for the Library among
+   these notices, as well as a reference directing the user to the
+   copies of the GNU GPL and this license document.
+
+   d) Do one of the following:
+
+       0) Convey the Minimal Corresponding Source under the terms of this
+       License, and the Corresponding Application Code in a form
+       suitable for, and under terms that permit, the user to
+       recombine or relink the Application with a modified version of
+       the Linked Version to produce a modified Combined Work, in the
+       manner specified by section 6 of the GNU GPL for conveying
+       Corresponding Source.
+
+       1) Use a suitable shared library mechanism for linking with the
+       Library.  A suitable mechanism is one that (a) uses at run time
+       a copy of the Library already present on the user's computer
+       system, and (b) will operate properly with a modified version
+       of the Library that is interface-compatible with the Linked
+       Version.
+
+   e) Provide Installation Information, but only if you would otherwise
+   be required to provide such information under section 6 of the
+   GNU GPL, and only to the extent that such information is
+   necessary to install and execute a modified version of the
+   Combined Work produced by recombining or relinking the
+   Application with a modified version of the Linked Version. (If
+   you use option 4d0, the Installation Information must accompany
+   the Minimal Corresponding Source and Corresponding Application
+   Code. If you use option 4d1, you must provide the Installation
+   Information in the manner specified by section 6 of the GNU GPL
+   for conveying Corresponding Source.)
+
+  5. Combined Libraries.
+
+  You may place library facilities that are a work based on the
+Library side by side in a single library together with other library
+facilities that are not Applications and are not covered by this
+License, and convey such a combined library under terms of your
+choice, if you do both of the following:
+
+   a) Accompany the combined library with a copy of the same work based
+   on the Library, uncombined with any other library facilities,
+   conveyed under the terms of this License.
+
+   b) Give prominent notice with the combined library that part of it
+   is a work based on the Library, and explaining where to find the
+   accompanying uncombined form of the same work.
+
+  6. Revised Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.
+
+  Each version is given a distinguishing version number. If the
+Library as you received it specifies that a certain numbered version
+of the GNU Lesser General Public License "or any later version"
+applies to it, you have the option of following the terms and
+conditions either of that published version or of any later version
+published by the Free Software Foundation. If the Library as you
+received it does not specify a version number of the GNU Lesser
+General Public License, you may choose any version of the GNU Lesser
+General Public License ever published by the Free Software Foundation.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+"""
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description='Given a database of core gambit signatures and FASTA files, output the number and percentage of core kmers found',
+        usage='gambit-core-check [options]',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    # Required input files
+    parser.add_argument('gambit_directory', help='A directory containing GAMBIT files (database and signatures)', type=str)
+    parser.add_argument('signatures_filename', help='A file containing the signatures', type=str)
+    parser.add_argument('database_filename', help='A file containing the sqlite database', type=str)
+    parser.add_argument('fasta_filenames', help='A list of FASTA files of genomes', type=str, nargs='+')
+
+    # Optional input parameters
+    parser.add_argument('--extended', '-e', action='store_true', help='Extended output', default=False)
+    parser.add_argument('--cpus', '-p', help='Number of cpus to use', type=int, default=1)
+    parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
+    parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
+
+    # Output
+    parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
+
+    return parser.parse_args()
+
+def run_gambit_core_check(gambit_directory, fasta_filename, cpus):
+    closest_accession = None
+    closest_distance = None
+    with tempfile.TemporaryDirectory() as temp_dir:
+        gambit_output = os.path.join(temp_dir, 'gambit_output.json')
+        os.system(f"gambit -d {gambit_directory} query --no-progress -o {gambit_output} -c {cpus} -f archive {fasta_filename}")
+
+        with open(gambit_output, 'r') as f:
+            data = json.load(f)
+            closest_genomes_json = data['items'][0]['classifier_result']['closest_match']
+            closest_accession = closest_genomes_json['genome']['key']
+            closest_distance = closest_genomes_json['distance']
+
+    logging.info(f"Filename: {fasta_filename}")
+    logging.info(f"Closest accession: {closest_accession}")
+    logging.info(f"Closest distance: {closest_distance}")
+
+    return closest_accession, closest_distance
+
+# Given an accession number get the kmers in the signature (the integer corresponding to kmers rather than the actual sequences)
+def get_closest_kmers(closest_accession, signatures_filename):
+    with load_signatures(signatures_filename) as src:
+
+        in_gidxs = np.flatnonzero(np.in1d(src.ids, [closest_accession]))
+        filtered_src = src[in_gidxs][0]
+        return filtered_src
+
+def get_kmers_from_fasta(fasta_filename, kmer, kmer_prefix,  cpus):
+     with tempfile.TemporaryDirectory() as temp_dir:
+        tmp_sigs_file = os.path.join(temp_dir, 'tmp_sigs_file.gs')
+        os.system(f"gambit signatures create -c {cpus} -k {kmer} -p {kmer_prefix} -o {tmp_sigs_file} --no-progress {fasta_filename}")
+
+        with load_signatures(tmp_sigs_file) as src:
+            return src[0]
+
+def intersection_kmers(core_kmers, genome_kmers):
+    return np.intersect1d(core_kmers, genome_kmers)
+
+def construct_extended_output(interection_of_kmers, core_kmers, closest_accession, closest_distance, fasta_filename, species):
+    completeness = len(interection_of_kmers) / len(core_kmers) * 100
+    output_values = [fasta_filename, species,  f"{completeness:.2f}%", f"({len(interection_of_kmers)}/{len(core_kmers)})", str(closest_accession), str(f"{closest_distance:.4f}")]
+    output_string = "\t".join(output_values)
+
+    logging.info(f"Filename: {fasta_filename}")
+    logging.info(f"Closest accession: {closest_accession}")
+    logging.info(f"Closest distance: {closest_distance}")
+    logging.info(f"Number of intersection kmers: {len(interection_of_kmers)}")
+    logging.info(f"Percentage of intersection kmers: {len(interection_of_kmers) / len(core_kmers) * 100}")
+    logging.info(f"Number of core kmers: {len(core_kmers)}")
+    return output_string
+
+def construct_consise_output(interection_of_kmers, core_kmers, fasta_filename, species):
+    completeness = len(interection_of_kmers) / len(core_kmers) * 100
+    return f"{fasta_filename}\t{species}\t{completeness:.2f}%"
+
+def find_species_from_accession(closest_accession, database_filename):
+    conn = sqlite3.connect(database_filename)
+    cursor = conn.cursor()
+
+    sql = '''
+    SELECT taxa.name
+    FROM genomes
+    JOIN genome_annotations ON genomes.id = genome_annotations.genome_id
+    JOIN taxa ON genome_annotations.taxon_id = taxa.id
+    WHERE genomes.refseq_acc = ?
+    '''
+
+    cursor.execute(sql, (closest_accession,))
+    species_name = cursor.fetchone()
+
+    species_name_for_accession = 'Unknown'
+    if species_name:
+        species_name_for_accession = species_name[0]
+
+    conn.close()
+    return species_name_for_accession
+
+def main():
+    options = parse_arguments()
+
+    # print headers
+    if options.extended:
+        print("Filename\tSpecies\tCompleteness (%)\tCore kmers\tClosest accession\tClosest distance")
+    else:
+        print("Filename\tSpecies\tCompleteness (%)")
+
+    for fasta_filename in options.fasta_filenames:
+        logging.info(f"Processing {fasta_filename}")
+        closest_accession, closest_distance = run_gambit_core_check(options.gambit_directory, fasta_filename, options.cpus)
+
+        core_kmers = get_closest_kmers(closest_accession, options.signatures_filename)
+        genome_kmers = get_kmers_from_fasta(fasta_filename, options.kmer, options.kmer_prefix, options.cpus)
+        interection_of_kmers = intersection_kmers(core_kmers, genome_kmers)
+
+        species = find_species_from_accession(closest_accession, options.database_filename)
+
+        if options.extended:
+            print(construct_extended_output(interection_of_kmers, core_kmers, closest_accession, closest_distance, fasta_filename, species))
+        else:
+            print(construct_consise_output(interection_of_kmers, core_kmers, fasta_filename, species))
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambittools.FilterFastq import FilterFastq
+
+parser = argparse.ArgumentParser(
+    description = 'Filter a FASTQ file to remove low abundance kmers, and save as an efficient FASTA file for input to GAMBIT',
+    usage = 'gambit-filter-fastq [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('fastq_filename',  help='Input FASTQ file', type=str)
+
+# Optional input parameters
+parser.add_argument('--kmer_prefix', '-p', help='Kmer prefix', default = 'ATGAC', type=str)
+parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 16)
+parser.add_argument('--min_kmer_freq', '-f', help='Minimum kmer frequency', default = 2, type=int)
+
+# Optional output file names
+parser.add_argument('--output_kmer_filename', '-o', help='Output filename for filtered FASTA containing only kmers', default = 'filtered_kmers.fa', type=str)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+FilterFastq(options.fastq_filename,
+            options.kmer_prefix, 
+            options.kmer, 
+            options.min_kmer_freq,
+            options.output_kmer_filename,
+            options.verbose).filter_fastq()

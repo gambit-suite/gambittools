@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambittools.DatabaseRecall import DatabaseRecall
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambittools").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Work out how good a GAMBIT database is at recalling species when the training set is passed in',
+    usage = 'gambit-database-recall [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('assembly_metadata_spreadsheet',  help='Assembly metadata file such as assembly_metadata.csv from the gambit-gtdb script', type=str)
+parser.add_argument('gambit_results_file',  help='Gambit results file where the accessions match the GTDB file', type=str)
+
+parser.add_argument('--output_filename','-o',  help='Output filename', type=str, default='correct_incorrect_predictions.txt')
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+DatabaseRecall(options.assembly_metadata_spreadsheet, 
+               options.gambit_results_file, 
+               options.output_filename,
+               options.debug,
+               options.verbose ).compare_results()

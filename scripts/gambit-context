@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+# given a gambit database and an assembly, create a phylogenetic tree of the closest genomes
+# to place the assembly in context. Additionally provide distance information about the other genomes.
+#Query an assembly against a gambit database
+#- output in archive format  (json, 10 closest matches)
+#Given a list of keys (10 closest), create a signatures file
+#Create a signatures file for the query genome
+#Merge the signatures files
+#Create a tree from the signatures file
+#Output - list of genomes and a distance
+#output - phylogenetic tree
+
+
+import sys
+import argparse
+import pandas as pd
+import tempfile
+import os
+import numpy as np
+import json
+from ete3 import Tree, TreeNode
+
+parser = argparse.ArgumentParser(
+    description = 'Place a genome in context from the database',
+    usage = 'gambit-context [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('gambit_database_directory', help='/path/to/gambit/database', type=str)
+parser.add_argument('assembly_filename',  help='An assembly in FASTA format', type=str)
+
+parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
+
+options = parser.parse_args()
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    gambit_output = os.path.join(temp_dir, 'gambit_output.json')
+    os.system("gambit -d "+ str(options.gambit_database_directory) + " query -o "+str(gambit_output)+" -f  archive " + str(options.assembly_filename))
+
+    with open(gambit_output, 'r') as f:
+        data = json.load(f)
+        closest_genomes_json = data['items'][0]['closest_genomes']
+
+        print("Accession\tGambit_distance")
+        for genome in closest_genomes_json:
+            print(genome['genome']['key'] + "\t" + "{:.6f}".format(genome['distance']))

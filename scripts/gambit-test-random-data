@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+import argparse
+import random
+import logging
+
+parser = argparse.ArgumentParser(
+    description = 'Create a random file containing gambit k-mers for testing',
+    usage = 'gambit-test-random-data [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('output_filename', help='Output filename', type=str)
+
+# parameters for modifying the gambit kmers
+parser.add_argument('--num_kmers',	 '-n', help='Number of k-mers', type=int, default = 50)
+parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
+parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
+
+options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+with open(options.output_filename, 'w') as file:
+    file.write(f'>sequence1\n')
+    for i in range(options.num_kmers):
+        sequence = 'ATGAC' + ''.join(random.choice('ACGT') for _ in range(6)) 
+        padding = ''.join(random.choice('ACGT') for _ in range(20))
+        sequence_line = padding + sequence + padding + '\n'
+        file.write(f'{sequence_line}') 
