@@ -5,7 +5,6 @@ This repository contains a collection of tools for working with GAMBIT. The tool
 
 # Usage
 
-## gambit-context
 
 ## gambit-core-check
 This script takes in a GAMBIT database which has been compressed down to a core set of k-mers. It outputs the number of core k-mers found in one or more FASTA files provided as input. This gives a good indication of how much of the conserved GAMBIT k-mers of this species are present and thus lets you evaluate the quality of your assembly, since you will know what percentage of the core k-mers are present or missing. The input FASTA files can optionally be gzipped.
@@ -62,6 +61,25 @@ And the extended output is a tab delmiited table of the format:
 ## gambit-database-recall
 This script checks to see if the classification output of GAMBIT is inline with the genomes used to make the GAMBIT database used. An assembly metadata spreadsheet is provided, which is generated with creating a GAMBIT database.  The script also takes the output of running GAMBIT over a set of genomes. The results of the Genus/Species calls from GAMBIT are compared to the assembly metadata spreadsheet and statistics are outputted 
 
+The script usage is:
+```
+usage: gambit-database-recall [options]
+
+Work out how good a GAMBIT database is at recalling species when the training set is passed in
+
+positional arguments:
+  assembly_metadata_spreadsheet
+                        Assembly metadata file such as assembly_metadata.csv from the gambit-gtdb script
+  gambit_results_file   Gambit results file where the accessions match the GTDB file
+
+options:
+  -h, --help            show this help message and exit
+  --output_filename OUTPUT_FILENAME, -o OUTPUT_FILENAME
+                        Output filename (default: correct_incorrect_predictions.txt)
+  --debug               Turn on debugging (default: False)
+  --verbose, -v         Turn on verbose output (default: False)
+```
+
 Input assembly metadata spreadsheet format (comma delimited):
 | uuid            | species_taxid | assembly_accession | species                |
 |-----------------|---------------|--------------------|------------------------|
@@ -102,10 +120,121 @@ Additionally if there are inconsistencies in the species calls, these will be ou
 Two files output extended information on the species recall, allowing you to dig further into them, correct_incorrect_predictions.txt and correct_incorrect_predictions.txt.differences.csv files.
 
 ## gambit-filter-fastq
+This preprocesing script takes in a FASTQ file, identifies the reads that contain GAMBIT k-mers (forward and reverse) and outputs a FASTA file which just contains those k-mer sequences. A minimum k-mer coverage an be specified to filter out low coverage k-mers, which may be due to sequencing errors. The input FASTQ file can optionally be gzipped.  The output FASTA file can then be used as input to GAMBIT will allows for FASTA files as input.  Whilst k-mers are likely to be split across reads, the default GAMBIT k-mer size and target (16 bases) is small enough to work with the most commonly used Illumina sequencing platforms which produce reads of 150 bases or more.  
+
+The script usage is:
+```
+usage: gambit-filter-fastq [options]
+
+Filter a FASTQ file to remove low abundance kmers, and save as an efficient FASTA file for input to GAMBIT
+
+positional arguments:
+  fastq_filename        Input FASTQ file
+
+options:
+  -h, --help            show this help message and exit
+  --kmer_prefix KMER_PREFIX, -p KMER_PREFIX
+                        Kmer prefix (default: ATGAC)
+  --kmer KMER, -k KMER  Length of the k-mer to use (default: 16)
+  --min_kmer_freq MIN_KMER_FREQ, -f MIN_KMER_FREQ
+                        Minimum kmer frequency (default: 2)
+  --output_kmer_filename OUTPUT_KMER_FILENAME, -o OUTPUT_KMER_FILENAME
+                        Output filename for filtered FASTA containing only kmers (default: filtered_kmers.fa)
+  --debug               Turn on debugging (default: False)
+  --verbose, -v         Turn on verbose output (default: False)
+```
+
+The output file defaults to filtered_kmers.fa and just contains the kmers. There is a very small chance that a false k-mer could be constructed from the k-mers in this format, however it is unlikely to have a high enough frequency to be called by GAMBIT, which is quite robust to noise.  The output file is a FASTA file of the format:
+```
+>from_file test.fastq
+ATGACCCGCTA
+ATGACCTCTGT
+ATGACTGTTAT
+ATGACCCGAGG
+ATGACGCCCTG
+ATGACCGGATC
+ATGACCGCTGG
+ATGACAGATCC
+```
+
+You can then run GAMBIT as normal on the file filtered_kmers.fa:
+```
+gambit -d database_directory query filtered_kmers.fa
+```
 
 ## gambit-list-taxa
+This script will take in a GAMBIT database file and list the taxa in the database.  The default is to list the species, but the genus can also be listed.  Extended information about each species is available including how many genomes are found within a species.
+
+The script usage is:
+```
+usage: gambit-list-taxa [options]
+
+List the taxa in a gambit database
+
+positional arguments:
+  database_main_filename
+                        A database .gdb file created by gambit build
+
+options:
+  -h, --help            show this help message and exit
+  --rank RANK, -r RANK  taxonomic rank (genus/species) (default: species)
+  --extended, -e        Extended output (default: False)
+  --verbose, -v         Turn on verbose output (default: False)
+```
+
+The default output is a list of species:
+```
+Abiotrophia defectiva
+Abyssicoccus albus
+Acaryochloris marina_A
+Acetatifactor intestinalis
+Acetatifactor muris
+Acetobacter aceti
+Acetobacter ascendens
+Acetobacter cerevisiae
+Acetobacter fabarum
+Acetobacter ghanensis
+...
+```
+
+The extended output is a tab delimited table of the format:
+| Species                   | Distance threshold       | No. Genomes | Curation version |
+|---------------------------|--------------------------|-------------|------------------|
+| Abiotrophia defectiva     | 0.0009                   | 2           | GTDB             |
+| Abyssicoccus albus        | 0.4038                   | 2           | GTDB             |
+| Acaryochloris marina_A    | 0.4585                   | 2           | GTDB             |
+| Acetatifactor intestinalis| 0.6511                   | 6           | GTDB             |
+| Acetatifactor muris       | 0.0022                   | 2           | GTDB             |
+| Acetobacter aceti         | 0.0335682146251201       | 3           | Original         |
+| Acetobacter ascendens     | 0.5318                   | 3           | GTDB             |
+| Acetobacter cerevisiae    | 0.5857046842575073       | 3           | Original         |
+| Acetobacter fabarum       | 0.4983                   | 6           | GTDB             |
+
+The distance_threshold is the GAMBIT diameter for the species. The number of genomes is the number of genomes in the database for that species. The curation version indicates whether the species was curated by the original published NCBI taxonomy or by the recent automated GTDB taxonomy.
 
 ## gambit-test-random-data
+This helper script will create a random FASTA file containing GAMBIT k-mers for testing. It can be run with the defaults and no other input parameters.
+
+The script usage is:
+```
+usage: gambit-test-random-data [options]
+
+Create a random file containing gambit k-mers for testing
+
+positional arguments:
+  output_filename       Output filename
+
+options:
+  -h, --help            show this help message and exit
+  --num_kmers NUM_KMERS, -n NUM_KMERS
+                        Number of k-mers (default: 50)
+  --kmer KMER, -k KMER  Length of the k-mer to use (default: 11)
+  --kmer_prefix KMER_PREFIX, -f KMER_PREFIX
+                        Kmer prefix (default: ATGAC)
+```
+
+## gambit-context
+In development.
 
 # Papers and citation
 Please cite the following paper if you use this software:
@@ -114,10 +243,11 @@ Please cite the following paper if you use this software:
     Lumpe J, Gumbleton L, Gorzalski A, Libuit K, Varghese V, et al. (2023) GAMBIT (Genomic Approximation Method for Bacterial Identification and Tracking): A methodology to rapidly leverage whole genome sequencing of bacterial isolates for clinical identification. PLOS ONE 18(2): e0277575. https://doi.org/10.1371/journal.pone.0277575
 ```
 
-If you use the Eukaryote database please cite:
+If you use the Fungal database (TheiaEuk) please cite:
 ```
 Ambrosio FJ 3rd, Scribner MR, Wright SM, Otieno JR, Doughty EL, Gorzalski A, Siao DD, Killian S, Hua C, Schneider E, Tran M, Varghese V, Libuit KG, Pandori M, Sevinsky JR, Hess D. TheiaEuk: a species-agnostic bioinformatics workflow for fungal genomic characterization. Front Public Health. 2023 Aug 1;11:1198213. doi: https://doi.org/10.3389/fpubh.2023.1198213. PMID: 37593727; PMCID: PMC10428623.
 ```
+
 
 
 # Licence
