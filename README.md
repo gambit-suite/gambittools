@@ -2,9 +2,22 @@
 This repository contains a collection of tools for working with GAMBIT. The tools are written in Python and are designed to be used in conjunction with [GAMBIT](https://github.com/jlumpe/gambit/tree/master/gambit) (Genomic Approximation Method for Bacterial Identification and Tracking) which is a tool for rapid taxonomic identification of microbial pathogens.
 
 # Installation
+The GAMBITtools scripts are written in Python and require Python 3.6 or higher.  The scripts have been tested on Linux and MacOS.  The scripts have the following dependancies:
+
+* gambit 
+* gambitdb
+* pandas
+* numpy
+* sqlite3
+* SeqIO (Biopython)
+* gzip
+
+To install the software, run the following command:
+```
+pip install git+https://github.com/gambit-suite/gambittools.git
+```
 
 # Usage
-
 
 ## gambit-core-check
 This script takes in a GAMBIT database which has been compressed down to a core set of k-mers. It outputs the number of core k-mers found in one or more FASTA files provided as input. This gives a good indication of how much of the conserved GAMBIT k-mers of this species are present and thus lets you evaluate the quality of your assembly, since you will know what percentage of the core k-mers are present or missing. The input FASTA files can optionally be gzipped.
@@ -236,25 +249,27 @@ options:
 ## gambit-context
 In development.
 
+# Tests
+The unit tests can be run with the following command:
+```
+python3 -m unittest discover -s gambittools/tests/ -p '*_test.py'
+```
+
 # Papers and citation
 Please cite the following paper if you use this software:
     
 ```
-    Lumpe J, Gumbleton L, Gorzalski A, Libuit K, Varghese V, et al. (2023) GAMBIT (Genomic Approximation Method for Bacterial Identification and Tracking): A methodology to rapidly leverage whole genome sequencing of bacterial isolates for clinical identification. PLOS ONE 18(2): e0277575. https://doi.org/10.1371/journal.pone.0277575
+    Lumpe J, Gumbleton L, Gorzalski A, Libuit K, Varghese V, et al. (2023) GAMBIT (Genomic Approximation Method for Bacterial Identification and Tracking): A methodology to rapidly leverage whole genome sequencing of bacterial isolates for clinical identification. PLOS ONE 18(2): e0277575. doi: [10.1371/journal.pone.0277575](https://doi.org/10.1371/journal.pone.0277575).
 ```
 
 If you use the Fungal database (TheiaEuk) please cite:
 ```
-Ambrosio FJ 3rd, Scribner MR, Wright SM, Otieno JR, Doughty EL, Gorzalski A, Siao DD, Killian S, Hua C, Schneider E, Tran M, Varghese V, Libuit KG, Pandori M, Sevinsky JR, Hess D. TheiaEuk: a species-agnostic bioinformatics workflow for fungal genomic characterization. Front Public Health. 2023 Aug 1;11:1198213. doi: https://doi.org/10.3389/fpubh.2023.1198213. PMID: 37593727; PMCID: PMC10428623.
+Ambrosio FJ 3rd, Scribner MR, Wright SM, Otieno JR, Doughty EL, Gorzalski A, Siao DD, Killian S, Hua C, Schneider E, Tran M, Varghese V, Libuit KG, Pandori M, Sevinsky JR, Hess D. TheiaEuk: a species-agnostic bioinformatics workflow for fungal genomic characterization. Front Public Health. 2023 Aug 1;11:1198213. doi: [10.3389/fpubh.2023.1198213](https://doi.org/10.3389/fpubh.2023.1198213). PMID: 37593727; PMCID: PMC10428623.
 ```
-
-
 
 # Licence
 GAMBITtools is open source software released under the GNU General Public License (GPL) version 3.0. See the file [LICENSE](LICENSE) for details.
 
 # Support
 This open source software is provided for free without support. 
-Paid support is available from [Theiagen Genomics] (https://www.theiagen.com/).
-
-
+Paid support is available from [Theiagen Genomics](https://www.theiagen.com/).

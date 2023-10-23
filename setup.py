@@ -22,7 +22,7 @@ if os.path.exists('VERSION'):
 setup(
     name='gambittools',
     version=version,
-    description='gambittools: a collection of helper scripts for working with GAMBIT',
+    description='GAMBITtools: a collection of helper scripts for working with GAMBIT',
 	long_description=read('README.md'),
     packages = find_packages(),
     author='Andrew J. Page',
@@ -35,6 +35,8 @@ setup(
            'biopython >= 1.68',
            'pandas',
            'numpy',
+           'sqlite3',
+           'gzip'
 
        ],
     license='GPLv3',

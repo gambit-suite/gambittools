@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-# given a gambit database and an assembly, create a phylogenetic tree of the closest genomes
-# to place the assembly in context. Additionally provide distance information about the other genomes.
-#Query an assembly against a gambit database
-#- output in archive format  (json, 10 closest matches)
-#Given a list of keys (10 closest), create a signatures file
-#Create a signatures file for the query genome
-#Merge the signatures files
-#Create a tree from the signatures file
-#Output - list of genomes and a distance
-#output - phylogenetic tree
+"""
+Given a gambit database and an assembly, create a phylogenetic tree of the closest genomes
+to place the assembly in context. Additionally provide distance information about the other genomes.
 
+Query an assembly against a gambit database
+- output in archive format  (json, 10 closest matches)
+Given a list of keys (10 closest), create a signatures file
+Create a signatures file for the query genome
+Merge the signatures files
+Create a tree from the signatures file
+Output - list of genomes and a distance
+output - phylogenetic tree
+"""
 
 import sys
 import argparse
