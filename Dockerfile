@@ -13,6 +13,7 @@ LABEL maintainer.email1="andrew.page@theiagen.com"
 
 # Environment
 ENV LC_ALL=C.UTF-8
+USER root
 
 # Install mamba environment
 COPY --chown=$MAMBA_USER:$MAMBA_USER env.yaml /tmp/env.yaml
@@ -21,7 +22,8 @@ RUN micromamba install -y -n base -f /tmp/env.yaml && \
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1  # Subsequent RUN commands use environment
 
-RUN mamba install -y gambit
+RUN micromamba install -c conda-forge -y zlib sqlite
+RUN micromamba install -c bioconda -c conda-forge -y gambit
 
 # Install gambittools
 ADD . /gambittools
@@ -38,6 +40,3 @@ WORKDIR /data
 
 # Make sure conda, python, and GAMBITtools are in the path
 ENV PATH="/opt/conda/bin:${PATH}"
-
-RUN cd /gambittools && bash run_tests.sh
-

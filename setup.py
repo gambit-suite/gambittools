@@ -35,8 +35,7 @@ setup(
            'biopython >= 1.68',
            'pandas',
            'numpy',
-           'sqlite3',
-           'gzip'
+           'db-sqlite3'
 
        ],
     license='GPLv3',

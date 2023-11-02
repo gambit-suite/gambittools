@@ -2,6 +2,7 @@
 import unittest
 import os
 import filecmp
+import tempfile
 from gambittools.FilterFastq  import FilterFastq
 
 test_modules_dir = os.path.dirname(os.path.realpath(__file__))
@@ -26,19 +27,21 @@ class TestFilterFastq(unittest.TestCase):
         kmer_prefix = 'ATGAC'
         kmer = 11
         min_kmer_freq = 2
-        output_kmer_filename = os.path.join(data_dir, 'test_output_kmers.fa')
-        verbose = False
 
-        f = FilterFastq(fastq_filename,
-                    kmer_prefix,
-                    kmer,
-                    min_kmer_freq,
-                    output_kmer_filename,
-                    verbose)
-        f.filter_fastq()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_kmer_filename = os.path.join(temp_dir, 'test_output_kmers.fa')
 
-        self.assertTrue(filecmp.cmp(output_kmer_filename, os.path.join(data_dir, 'test_expected_output_kmers.fa'), shallow=False))
-        self.cleanup()
+            verbose = False
+
+            f = FilterFastq(fastq_filename,
+                        kmer_prefix,
+                        kmer,
+                        min_kmer_freq,
+                        output_kmer_filename,
+                        verbose)
+            f.filter_fastq()
+            self.assertTrue(filecmp.cmp(output_kmer_filename, os.path.join(data_dir, 'test_expected_output_kmers.fa'), shallow=False))
+            self.cleanup()
 
     def cleanup(self):
         """
