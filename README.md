@@ -1,11 +1,10 @@
 # GAMBITtools
-This repository contains a collection of tools for working with GAMBIT. The tools are written in Python and are designed to be used in conjunction with [GAMBIT](https://github.com/jlumpe/gambit/tree/master/gambit) (Genomic Approximation Method for Bacterial Identification and Tracking) which is a tool for rapid taxonomic identification of microbial pathogens.
+This repository contains a collection of tools for working with GAMBIT. The tools are written in Python and are designed to be used in conjunction with [GAMBIT](https://github.com/gambit-suite/gambit) (Genomic Approximation Method for Bacterial Identification and Tracking) which is a tool for rapid taxonomic identification of microbial pathogens.
 
 # Installation
-The GAMBITtools scripts are written in Python and require Python 3.6 or higher.  The scripts have been tested on Linux and MacOS.  The scripts have the following dependancies:
+The GAMBITtools scripts are written in Python and require Python 3.6 or higher.  The scripts have been tested on Linux (Ubuntu 22.04).  The scripts have the following dependancies:
 
 * gambit 
-* gambitdb
 * pandas
 * numpy
 * sqlite3
@@ -15,6 +14,16 @@ The GAMBITtools scripts are written in Python and require Python 3.6 or higher. 
 To install the software, run the following command:
 ```
 pip install git+https://github.com/gambit-suite/gambittools.git
+```
+
+## Docker
+You can use docker to run the software.  To build from scratch run:
+```
+docker build -t gambittools .
+```
+then to run one of the scripts:
+```
+docker run -v $(pwd):/data gambittools gambit-list-taxa /data/gambit_database.gdb
 ```
 
 # Usage          |

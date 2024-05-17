@@ -15,7 +15,7 @@ def read(fname):
     """
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-version = 'x.y.z'
+version = '1.0.0'
 if os.path.exists('VERSION'):
   version = open('VERSION').read().strip()
 
@@ -35,8 +35,7 @@ setup(
            'biopython >= 1.68',
            'pandas',
            'numpy',
-           'sqlite3',
-           'gzip'
+           'db-sqlite3'
 
        ],
     license='GPLv3',
