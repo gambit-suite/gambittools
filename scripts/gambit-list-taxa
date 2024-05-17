@@ -21,8 +21,8 @@ main_db_connection = sqlite3.connect(options.database_main_filename)
 
 if options.extended:
     # join the genome_annotations table and the taxa table and count the number of rows in genome_annotations where the genome_annotaitons.taxon_id = taxa.id
-    taxa = [row for row in main_db_connection.execute("SELECT taxa.key,taxa.name,taxa.distance_threshold,COUNT(genome_annotations.taxon_id) FROM taxa LEFT JOIN genome_annotations ON genome_annotations.taxon_id = taxa.id WHERE taxa.rank LIKE '"+ options.rank+"' GROUP BY taxa.key ORDER BY taxa.name ASC")]
-    print('Species\tDistance threshold\tNo. Genomes\tCuration version')
+    taxa = [row for row in main_db_connection.execute("SELECT taxa.key,taxa.name,taxa.distance_threshold,COUNT(genome_annotations.taxon_id), taxa.id FROM taxa LEFT JOIN genome_annotations ON genome_annotations.taxon_id = taxa.id WHERE taxa.rank LIKE '"+ options.rank+"' GROUP BY taxa.key ORDER BY taxa.name ASC")]
+    print('Species\tDistance threshold\tNo. Genomes\tNo. Child taxa\tCuration version')
     for t in taxa:
         # the original manually curated database entries have ncbi/taxonomy/xxx or genbank/refseq-curated/xxx
         # whilst the automated ones from GTDB have a uuid 73a13525-4fb3-4da7-9f16-fda91bbfbea5
@@ -30,7 +30,13 @@ if options.extended:
         if '/' in t[0]:
             curation_version = 'Original'
 
-        print(str(t[1]) + '\t' + str(t[2]) + '\t' + str(t[3]) + '\t' + curation_version)
+        # Check to see if there are any children of this taxon. We wont go through the whole tree, just one level.
+        children = [row for row in main_db_connection.execute("SELECT taxa.key,taxa.name,taxa.distance_threshold,COUNT(genome_annotations.taxon_id) FROM taxa LEFT JOIN genome_annotations ON genome_annotations.taxon_id = taxa.id WHERE taxa.parent_id = "+str(t[4])+" GROUP BY taxa.id ORDER BY taxa.name ASC")]
+        if len(children) > 0:
+            genomes_total = t[3] + sum([c[3] for c in children])
+            print(str(t[1]) + '\t' + str(t[2]) + '\t' + str(genomes_total) + '\t' + str(len(children)) + '\t' + curation_version)
+        else:
+            print(str(t[1]) + '\t' + str(t[2]) + '\t' + str(t[3])+ '\t' + '0' + '\t' + curation_version)
 else:
     taxa = [row[0] for row in main_db_connection.execute("SELECT name FROM taxa WHERE rank LIKE '"+ options.rank+"'  ORDER BY name ASC")]
     for t in taxa:
