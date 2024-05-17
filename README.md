@@ -17,59 +17,7 @@ To install the software, run the following command:
 pip install git+https://github.com/gambit-suite/gambittools.git
 ```
 
-# Usage
-
-## gambit-core-check
-This script takes in a GAMBIT database which has been compressed down to a core set of k-mers. It outputs the number of core k-mers found in one or more FASTA files provided as input. This gives a good indication of how much of the conserved GAMBIT k-mers of this species are present and thus lets you evaluate the quality of your assembly, since you will know what percentage of the core k-mers are present or missing. The input FASTA files can optionally be gzipped.
-
-The script usage is:
-```
-usage: gambit-core-check [options]
-
-Given a database of core gambit signatures and FASTA files, output the number and percentage of core kmers found
-
-positional arguments:
-  gambit_directory      A directory containing GAMBIT files (database and signatures)
-  signatures_filename   A file containing the signatures
-  database_filename     A file containing the sqlite database
-  fasta_filenames       A list of FASTA files of genomes
-
-options:
-  -h, --help            show this help message and exit
-  --extended, -e        Extended output (default: False)
-  --cpus CPUS, -p CPUS  Number of cpus to use (default: 1)
-  --kmer KMER, -k KMER  Length of the k-mer to use (default: 11)
-  --kmer_prefix KMER_PREFIX, -f KMER_PREFIX
-                        Kmer prefix (default: ATGAC)
-  --verbose, -v         Turn on verbose output (default: False)
-```
-
-A default output has is a tab delimited table of the format:
-| Filename                | Species                    | Completeness (%) |
-|-------------------------|----------------------------|------------------|
-| GCA_000007325.1.fna.gz  | Fusobacterium nucleatum    | 100.00%          |
-| GCA_000007385.1.fna.gz  | Xanthomonas oryzae         | 100.00%          |
-| GCA_000008525.1.fna.gz  | Helicobacter pylori        | 85.00%           |
-| GCA_000011445.1.fna.gz  | Mycoplasma mycoides        | 100.00%          |
-| GCA_000013525.1.fna.gz  | Streptococcus pyogenes     | 99.85%           |
-| GCA_000013965.1.fna.gz  | Leptospira borgpetersenii  | 100.00%          |
-| GCA_000014325.1.fna.gz  | Streptococcus suis         | 98.91%           |
-| GCA_000015425.1.fna.gz  | Acinetobacter baumannii    | 97.61%           |
-| GCA_000016205.1.fna.gz  | Burkholderia vietnamiensis | 99.61%           |
-
-
-And the extended output is a tab delmiited table of the format:
-| Filename                 | Species                   | Completeness (%) | Core kmers     | Closest accession | Closest distance |
-|--------------------------|---------------------------|------------------|----------------|-------------------|------------------|
-| GCA_000014325.1.fna.gz   | Streptococcus suis        | 98.91%           | (363/367)      | GCF_000440895.1   | 0.9206           |
-| GCA_000015425.1.fna.gz   | Acinetobacter baumannii   | 97.61%           | (1879/1925)    | GCF_001576615.1   | 0.7848           |
-| GCA_000016205.1.fna.gz   | Burkholderia vietnamiensis| 99.61%           | (2318/2327)    | GCF_000959445.1   | 0.7700           |
-| GCA_000016465.1.fna.gz   | Haemophilus influenzae    | 100.00%          | (359/359)      | GCF_000016465.1   | 0.8544           |
-| GCA_000018925.1.fna.gz   | Francisella tularensis    | 100.00%          | (1158/1158)    | GCF_000833355.1   | 0.5407           |
-| GCA_000020605.1.fna.gz   | Agathobacter rectalis     | 100.00%          | (895/895)      | GCA_000020605.1   | 0.8829           |
-| GCA_000022825.1.fna.gz   | Yersinia pestis           | 99.93%           | (7172/7177)    | GCF_000324405.1   | 0.2955           |
-| GCA_000027065.2.fna.gz   | Cronobacter turicensis    | 100.00%          | (4393/4393)    | GCA_000027065.2   | 0.5175           |
-| GCA_000027305.1.fna.gz   | Haemophilus influenzae    | 100.00%          | (359/359)      | GCF_000016465.1   | 0.8587           |
+# Usage          |
 
 ## gambit-database-recall
 This script checks to see if the classification output of GAMBIT is inline with the genomes used to make the GAMBIT database used. An assembly metadata spreadsheet is provided, which is generated with creating a GAMBIT database.  The script also takes the output of running GAMBIT over a set of genomes. The results of the Genus/Species calls from GAMBIT are compared to the assembly metadata spreadsheet and statistics are outputted 
@@ -211,19 +159,21 @@ Acetobacter ghanensis
 ```
 
 The extended output is a tab delimited table of the format:
-| Species                   | Distance threshold       | No. Genomes | Curation version |
-|---------------------------|--------------------------|-------------|------------------|
-| Abiotrophia defectiva     | 0.0009                   | 2           | GTDB             |
-| Abyssicoccus albus        | 0.4038                   | 2           | GTDB             |
-| Acaryochloris marina_A    | 0.4585                   | 2           | GTDB             |
-| Acetatifactor intestinalis| 0.6511                   | 6           | GTDB             |
-| Acetatifactor muris       | 0.0022                   | 2           | GTDB             |
-| Acetobacter aceti         | 0.0335682146251201       | 3           | Original         |
-| Acetobacter ascendens     | 0.5318                   | 3           | GTDB             |
-| Acetobacter cerevisiae    | 0.5857046842575073       | 3           | Original         |
-| Acetobacter fabarum       | 0.4983                   | 6           | GTDB             |
+| Species                   | Distance threshold       | No. Genomes | No. Child taxa | Curation version |
+|---------------------------|--------------------------|-------------|----------------|------------------|
+| Abiotrophia defectiva     | 0.0009                   | 2           | 0              | GTDB             |
+| Abyssicoccus albus        | 0.4038                   | 2           | 1              | GTDB             |
+| Acaryochloris marina_A    | 0.4585                   | 2           | 0              | GTDB             |
+| Acetatifactor intestinalis| 0.6511                   | 9           | 2              | GTDB             |
+| Acetatifactor muris       | 0.0022                   | 2           | 0              | GTDB             |
+| Acetobacter aceti         | 0.0335682146251201       | 3           | 0              | Original         |
+| Acetobacter ascendens     | 0.5318                   | 8           | 0              | GTDB             |
+| Acetobacter cerevisiae    | 0.5857046842575073       | 3           | 0              | Original         |
+| Acetobacter fabarum       | 0.4983                   | 6           | 0              | GTDB             |
 
 The distance_threshold is the GAMBIT diameter for the species. The number of genomes is the number of genomes in the database for that species. The curation version indicates whether the species was curated by the original published NCBI taxonomy or by the recent automated GTDB taxonomy.
+Where there are child taxa, these are the number of species that are found within the species.  For example, a species could have a total of 9 genomes in the database, but these could be split into 2 subspecies, with 7 genomes in one subspecies and 2 genomes in another subspecies.
+When looking at the genus rank, the total number of genomes will be all the direct child taxa (usually the species, but not the subspecies). There are a few conditions not covered, where more complex structures were curated to reflect the needs of public health in the taxonomy, such as for E. coli/Shigella and Enterobacter cloacae.
 
 ## gambit-test-random-data
 This helper script will create a random FASTA file containing GAMBIT k-mers for testing. It can be run with the defaults and no other input parameters.
