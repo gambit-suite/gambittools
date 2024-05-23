@@ -120,31 +120,8 @@ for n in tree.traverse():
     n.img_style["vt_line_width"] = 1
     n.img_style["vt_line_type"] = 0
     n.img_style["hz_line_type"] = 0
-    n.img_style["vt_line_color"] = "black"
-    n.img_style["hz_line_color"] = "black"
-    n.img_style["hz_line_width"] = 1
-    n.img_style["vt_line_width"] = 1
-    n.img_style["vt_line_type"] = 0
-    n.img_style["hz_line_type"] = 0
     n.img_style["size"] = 0
     n.img_style["shape"] = "square"
-    n.img_style["fgcolor"] = "black"
-    n.img_style["bgcolor"] = "white"
-    n.img_style["vt_line_color"] = "black"
-    n.img_style["hz_line_color"] = "black"
-    n.img_style["hz_line_width"] = 1
-    n.img_style["vt_line_width"] = 1
-    n.img_style["vt_line_type"] = 0
-    n.img_style["hz_line_type"] = 0
-    n.img_style["vt_line_color"] = "black"
-    n.img_style["hz_line_color"] = "black"
-    n.img_style["hz_line_width"] = 1
-    n.img_style["vt_line_width"] = 1
-    n.img_style["vt_line_type"] = 0
-    n.img_style["hz_line_type"] = 0
-    n.img_style["size"] = 0
-    n.img_style["shape"] = "square"
-    n.img_style["fgcolor"] = "black"
     n.img_style["bgcolor"] = "white"
 
     if n.is_leaf():
