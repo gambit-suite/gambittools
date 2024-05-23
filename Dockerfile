@@ -15,6 +15,10 @@ LABEL maintainer.email1="andrew.page@theiagen.com"
 ENV LC_ALL=C.UTF-8
 USER root
 
+# Install system dependencies
+RUN sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libxkbcommon-tools libxcb-xinerama0 libxcb-xkb1 libxcb-render-util0 libxcb-icccm4 libxcb-keysyms1 libxcb1 libxcb1-dev libxcb-image0
+RUN sudo apt-get install qtbase5-dev=5.15.3+dfsg-2ubuntu0.2 qtchooser qt5-qmake qtbase5-dev-tools
+
 # Install mamba environment
 COPY --chown=$MAMBA_USER:$MAMBA_USER env.yaml /tmp/env.yaml
 RUN micromamba install -y -n base -f /tmp/env.yaml && \
@@ -22,8 +26,9 @@ RUN micromamba install -y -n base -f /tmp/env.yaml && \
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1  # Subsequent RUN commands use environment
 
-RUN micromamba install -c conda-forge -y zlib sqlite
+RUN micromamba install -c conda-forge -y zlib sqlite 
 RUN micromamba install -c bioconda -c conda-forge -y gambit
+RUN pip install PyQt5==5.15.3
 
 # Install gambittools
 ADD . /gambittools

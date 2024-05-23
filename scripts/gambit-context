@@ -6,6 +6,7 @@ import os
 import numpy as np
 import json
 from gambit.sigs import load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
+from ete3 import Tree
 
 #!/usr/bin/env python3
 """
@@ -35,6 +36,7 @@ parser.add_argument('assembly_filenames', help='Assemblies in FASTA format, can 
 
 parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default='merged_database.gs', type=str)
 parser.add_argument('--tree_output_filename', '-t', help='Output filename for tree (newick format)', default='genome_tree.nwk', type=str)
+parser.add_argument('--tree_image_output_filename', '-i', help='Output filename for tree image (png format)', default='genome_tree.png', type=str)
 parser.add_argument('--cpus', '-p', help='Number of cpus to use', type=int, default=1)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
 
@@ -98,3 +100,64 @@ with tempfile.TemporaryDirectory() as temp_dir:
         # Remove the temporary files
         os.remove(input_genome_signatures)
         os.remove(filtered_genome_signatures)
+
+# Create a phylogenetic tree image
+# python -m ete3 view -t genome_tree.nwk --image-output genome_tree.png --dpi 300 --width 800
+# Read the newick file
+tree = Tree(options.tree_output_filename)
+# Midpoint root the tree
+tree.set_outgroup(tree.get_midpoint_outgroup())
+# Order the tree in descending order
+tree.ladderize()
+
+# right align the taxon names
+for n in tree.traverse():
+    n.img_style["size"] = 0
+    n.img_style["fgcolor"] = "black"
+    n.img_style["vt_line_color"] = "black"
+    n.img_style["hz_line_color"] = "black"
+    n.img_style["hz_line_width"] = 1
+    n.img_style["vt_line_width"] = 1
+    n.img_style["vt_line_type"] = 0
+    n.img_style["hz_line_type"] = 0
+    n.img_style["vt_line_color"] = "black"
+    n.img_style["hz_line_color"] = "black"
+    n.img_style["hz_line_width"] = 1
+    n.img_style["vt_line_width"] = 1
+    n.img_style["vt_line_type"] = 0
+    n.img_style["hz_line_type"] = 0
+    n.img_style["size"] = 0
+    n.img_style["shape"] = "square"
+    n.img_style["fgcolor"] = "black"
+    n.img_style["bgcolor"] = "white"
+    n.img_style["vt_line_color"] = "black"
+    n.img_style["hz_line_color"] = "black"
+    n.img_style["hz_line_width"] = 1
+    n.img_style["vt_line_width"] = 1
+    n.img_style["vt_line_type"] = 0
+    n.img_style["hz_line_type"] = 0
+    n.img_style["vt_line_color"] = "black"
+    n.img_style["hz_line_color"] = "black"
+    n.img_style["hz_line_width"] = 1
+    n.img_style["vt_line_width"] = 1
+    n.img_style["vt_line_type"] = 0
+    n.img_style["hz_line_type"] = 0
+    n.img_style["size"] = 0
+    n.img_style["shape"] = "square"
+    n.img_style["fgcolor"] = "black"
+    n.img_style["bgcolor"] = "white"
+
+    if n.is_leaf():
+        n.img_style["size"] = 0
+        n.img_style["shape"] = "square"
+        n.img_style["fgcolor"] = "black"
+        n.img_style["bgcolor"] = "white"
+        n.img_style["vt_line_color"] = "black"
+        n.img_style["hz_line_color"] = "black"
+        n.img_style["hz_line_width"] = 1
+        n.img_style["vt_line_width"] = 1
+        n.img_style["vt_line_type"] = 0
+        n.img_style["hz_line_type"] = 0
+
+# Output the image as a png
+tree.render(options.tree_image_output_filename, w=800, units="px", dpi=300)
