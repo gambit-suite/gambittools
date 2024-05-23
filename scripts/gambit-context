@@ -15,12 +15,10 @@ output - phylogenetic tree
 
 import sys
 import argparse
-import pandas as pd
 import tempfile
 import os
 import numpy as np
 import json
-from ete3 import Tree, TreeNode
 
 parser = argparse.ArgumentParser(
     description = 'Place a genome in context from the database',
@@ -29,20 +27,59 @@ parser = argparse.ArgumentParser(
 
 # Required input files
 parser.add_argument('gambit_database_directory', help='/path/to/gambit/database', type=str)
-parser.add_argument('assembly_filename',  help='An assembly in FASTA format', type=str)
+parser.add_argument('gambit_signatures_filename', help='/path/to/gambit/database/signatures_file.gs', type=str)
+parser.add_argument('assembly_filenames',  help='Assemblies in FASTA format, can be gzipped', type=str, nargs='+')
 
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'merged_database.gs', type=str)
+parser.add_argument('--tree_output_filename', '-t', help='Output filename for tree (newick format)', default = 'genome_tree.nwk', type=str)
 parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
 options = parser.parse_args()
 
+close_accessions = []
 with tempfile.TemporaryDirectory() as temp_dir:
     gambit_output = os.path.join(temp_dir, 'gambit_output.json')
-    os.system("gambit -d "+ str(options.gambit_database_directory) + " query -o "+str(gambit_output)+" -f  archive " + str(options.assembly_filename))
+    os.system("gambit -d "+ str(options.gambit_database_directory) + " query -o "+str(gambit_output)+" -f  archive " + str(' '.join(options.assembly_filenames)))
 
     with open(gambit_output, 'r') as f:
         data = json.load(f)
         closest_genomes_json = data['items'][0]['closest_genomes']
+        close_accessions = [g['genome']['key'] for g in closest_genomes_json]
 
-        print("Accession\tGambit_distance")
-        for genome in closest_genomes_json:
-            print(genome['genome']['key'] + "\t" + "{:.6f}".format(genome['distance']))
+        if options.verbose:
+            print("Accession\tGambit_distance")
+            for genome in closest_genomes_json:
+                print(genome['genome']['key'] + "\t" + "{:.6f}".format(genome['distance']))
+
+# make this a temp file that gets cleaned up
+input_genome_signatures = 'input_genome_signatures.gs'
+os.system("gambit signatures create -k 11 -p ATGAC -o " + input_genome_signatures + " " + str(' '.join(options.assembly_filenames)))
+
+from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
+
+# make this a temp file that gets cleaned up
+filtered_genome_signatures = 'filtered_genome_signatures.gs'   
+# filter the signatures database to only include the context genomes
+with load_signatures(options.gambit_signatures_filename) as src:
+    in_gidxs = np.flatnonzero(np.in1d(src.ids,close_accessions))
+    filtered_src_ids = src.ids[in_gidxs]
+    filtered_src = src[in_gidxs]
+    out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+
+    dump_signatures(filtered_genome_signatures, out_sigs)
+
+# merge the two signatures files, so the input genomes and the context genomes from the database
+with load_signatures(filtered_genome_signatures) as main_sig, load_signatures(input_genome_signatures) as patch_sig:
+    # merge the two signatures files
+    merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
+    merged_src = SignatureList(main_sig)
+    merged_src.extend(patch_sig)
+    out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
+
+    dump_signatures(options.signatures_output_filename, out_sigs)
+
+os.system("gambit tree -s " + options.signatures_output_filename +  " -c " + str(options.cpus) + " > " + options.tree_output_filename )
+
+os.remove(input_genome_signatures)
+os.remove(filtered_genome_signatures)
