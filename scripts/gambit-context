@@ -45,25 +45,56 @@ options = parser.parse_args()
 # List to store the closest genome accessions
 close_accessions = []
 
+# gambit outputs a jaccard score, we want the exact nubmers of shared kmers
+def pairwise_matrix(genome_signatures):
+    matrix = np.zeros((len(genome_signatures), len(genome_signatures)))
+    in_gidxs = np.flatnonzero(genome_signatures.ids)
+    filtered_src_ids = genome_signatures.ids[in_gidxs]
+    filtered_src = genome_signatures[in_gidxs]
+
+    # Create a matrix of pairwise distances
+    for i, genome1 in enumerate(filtered_src):
+        for j, genome2 in enumerate(filtered_src):
+            # Find the intersection of the two genomes
+            num_common_kmers = len(np.intersect1d(genome1, genome2))
+            #num_unique_kmers = len(np.setdiff1d(genome1, genome2))
+            num_unique_kmers = len(genome1)-num_common_kmers + len(genome2)-num_common_kmers
+
+            # count the number of integers different between genome 1 and genome2
+            matrix[i, j] = num_unique_kmers
+    return matrix
+
+
 # Create a temporary directory to store intermediate files
 with tempfile.TemporaryDirectory() as temp_dir:
     # Path to the output file from the gambit command
     gambit_output = os.path.join(temp_dir, 'gambit_output.json')
 
     # Run the gambit command to query the assembly against the gambit database
-    os.system("gambit -d " + str(options.gambit_database_directory) + " query -o " + str(gambit_output) + " -f  archive " + str(' '.join(options.assembly_filenames)))
+    gambit_cmd = "gambit -d " + str(options.gambit_database_directory) + " query -o " + str(gambit_output) + " -f  archive " + str(' '.join(options.assembly_filenames))
+    os.system(gambit_cmd)
+    if options.verbose:
+        print("Gambit command: " + gambit_cmd)
 
     # Read the output file and extract the closest genomes
     with open(gambit_output, 'r') as f:
         data = json.load(f)
-        closest_genomes_json = data['items'][0]['closest_genomes']
-        close_accessions = [g['genome']['key'] for g in closest_genomes_json]
 
+        closest_genomes_to_distance = {}
+        for item in data['items']:
+            closest_genomes_json = item['closest_genomes']
+            close_accessions_one_genome = [g['genome']['key'] for g in closest_genomes_json]
+            
+            close_accessions.extend(close_accessions_one_genome)
+            for g in closest_genomes_json:
+                closest_genomes_to_distance[g['genome']['key']] = g['distance']
+
+        print(close_accessions)
         if options.verbose:
             # Print the closest genomes and their distances
             print("Accession\tGambit_distance")
-            for genome in closest_genomes_json:
-                print(genome['genome']['key'] + "\t" + "{:.6f}".format(genome['distance']))
+            for genome, distance in closest_genomes_to_distance.items():
+                print(genome + "\t" + "{:.6f}".format(distance))
 
     # Create temporary files for genome signatures
     with tempfile.NamedTemporaryFile(suffix='.gs', delete=False) as input_genome_signatures_file, \
@@ -93,6 +124,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
             out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
 
             dump_signatures(options.signatures_output_filename, out_sigs)
+            pairwise_values = pairwise_matrix(out_sigs)
+            print(pairwise_values)
 
         # Create a phylogenetic tree from the merged signatures file
         os.system("gambit tree -s " + options.signatures_output_filename + " -c " + str(options.cpus) + " > " + options.tree_output_filename)
@@ -138,3 +171,4 @@ for n in tree.traverse():
 
 # Output the image as a png
 tree.render(options.tree_image_output_filename, w=800, units="px", dpi=300)
+
