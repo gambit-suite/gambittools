@@ -4,11 +4,15 @@ import argparse
 import tempfile
 import os
 import numpy as np
+import pandas as pd
 import json
 from gambit.sigs import load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
 from ete3 import Tree
 
-#!/usr/bin/env python3
+# set the QT_QPA_PLATFORM to linuxfb to avoid the following error
+# export QT_QPA_PLATFORM=linuxfb
+# "QXcbConnection: Could not connect to display"
+os.environ['QT_QPA_PLATFORM'] = 'linuxfb'
 """
 Given a gambit database and an assembly, create a phylogenetic tree of the closest genomes
 to place the assembly in context. Additionally provide distance information about the other genomes.
@@ -37,7 +41,8 @@ parser.add_argument('assembly_filenames', help='Assemblies in FASTA format, can 
 parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default='merged_database.gs', type=str)
 parser.add_argument('--tree_output_filename', '-t', help='Output filename for tree (newick format)', default='genome_tree.nwk', type=str)
 parser.add_argument('--tree_image_output_filename', '-i', help='Output filename for tree image (png format)', default='genome_tree.png', type=str)
-parser.add_argument('--cpus', '-p', help='Number of cpus to use', type=int, default=1)
+parser.add_argument('--pairwise_output_filename', '-p', help='Output filename for pairwise matrix', default='pairwise.tsv', type=str)
+parser.add_argument('--cpus', '-c', help='Number of cpus to use', type=int, default=1)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
 
 options = parser.parse_args()
@@ -62,7 +67,8 @@ def pairwise_matrix(genome_signatures):
 
             # count the number of integers different between genome 1 and genome2
             matrix[i, j] = num_unique_kmers
-    return matrix
+
+    return pd.DataFrame(matrix, index=filtered_src_ids, columns=filtered_src_ids)
 
 
 # Create a temporary directory to store intermediate files
@@ -124,8 +130,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
             out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
 
             dump_signatures(options.signatures_output_filename, out_sigs)
+
+            # Output a pairwise comparison to a file
             pairwise_values = pairwise_matrix(out_sigs)
-            print(pairwise_values)
+            pairwise_values.to_csv(options.pairwise_output_filename, sep='\t')
 
         # Create a phylogenetic tree from the merged signatures file
         os.system("gambit tree -s " + options.signatures_output_filename + " -c " + str(options.cpus) + " > " + options.tree_output_filename)
