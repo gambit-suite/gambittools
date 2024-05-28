@@ -8,175 +8,125 @@ import pandas as pd
 import json
 from gambit.sigs import load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
 from ete3 import Tree
+import logging
 
-# set the QT_QPA_PLATFORM to linuxfb to avoid the following error
-# export QT_QPA_PLATFORM=linuxfb
-# "QXcbConnection: Could not connect to display"
+# Set the QT_QPA_PLATFORM to linuxfb to avoid the "QXcbConnection: Could not connect to display" error
 os.environ['QT_QPA_PLATFORM'] = 'linuxfb'
-"""
-Given a gambit database and an assembly, create a phylogenetic tree of the closest genomes
-to place the assembly in context. Additionally provide distance information about the other genomes.
 
-Query an assembly against a gambit database
-- output in archive format  (json, 10 closest matches)
-Given a list of keys (10 closest), create a signatures file
-Create a signatures file for the query genome
-Merge the signatures files
-Create a tree from the signatures file
-Output - list of genomes and a distance
-output - phylogenetic tree
-"""
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-# Parse command line arguments
-parser = argparse.ArgumentParser(
-    description='Place a genome in context from the database',
-    usage='gambit-context [options]',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def run_command(cmd):
+    """Run a shell command and handle errors."""
+    logging.info(f"Running command: {cmd}")
+    ret = os.system(cmd)
+    if ret != 0:
+        logging.error(f"Command failed with exit code {ret}")
+        sys.exit(1)
 
-# Required input files
-parser.add_argument('gambit_database_directory', help='/path/to/gambit/database', type=str)
-parser.add_argument('gambit_signatures_filename', help='/path/to/gambit/database/signatures_file.gs', type=str)
-parser.add_argument('assembly_filenames', help='Assemblies in FASTA format, can be gzipped', type=str, nargs='+')
-
-parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default='merged_database.gs', type=str)
-parser.add_argument('--tree_output_filename', '-t', help='Output filename for tree (newick format)', default='genome_tree.nwk', type=str)
-parser.add_argument('--tree_image_output_filename', '-i', help='Output filename for tree image (png format)', default='genome_tree.png', type=str)
-parser.add_argument('--pairwise_output_filename', '-p', help='Output filename for pairwise matrix', default='pairwise.tsv', type=str)
-parser.add_argument('--cpus', '-c', help='Number of cpus to use', type=int, default=1)
-parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
-
-options = parser.parse_args()
-
-# List to store the closest genome accessions
-close_accessions = []
-
-# gambit outputs a jaccard score, we want the exact nubmers of shared kmers
 def pairwise_matrix(genome_signatures):
-    matrix = np.zeros((len(genome_signatures), len(genome_signatures)))
     in_gidxs = np.flatnonzero(genome_signatures.ids)
     filtered_src_ids = genome_signatures.ids[in_gidxs]
     filtered_src = genome_signatures[in_gidxs]
 
+    matrix = np.zeros((len(filtered_src), len(filtered_src)))
+
     # Create a matrix of pairwise distances
     for i, genome1 in enumerate(filtered_src):
         for j, genome2 in enumerate(filtered_src):
-            # Find the intersection of the two genomes
             num_common_kmers = len(np.intersect1d(genome1, genome2))
-            #num_unique_kmers = len(np.setdiff1d(genome1, genome2))
-            num_unique_kmers = len(genome1)-num_common_kmers + len(genome2)-num_common_kmers
-
-            # count the number of integers different between genome 1 and genome2
+            num_unique_kmers = len(genome1) - num_common_kmers + len(genome2) - num_common_kmers
             matrix[i, j] = num_unique_kmers
-
+    
     return pd.DataFrame(matrix, index=filtered_src_ids, columns=filtered_src_ids)
 
+def main(options):
+    close_accessions = []
 
-# Create a temporary directory to store intermediate files
-with tempfile.TemporaryDirectory() as temp_dir:
-    # Path to the output file from the gambit command
-    gambit_output = os.path.join(temp_dir, 'gambit_output.json')
+    with tempfile.TemporaryDirectory() as temp_dir:
+        gambit_output = os.path.join(temp_dir, 'gambit_output.json')
+        gambit_cmd = f"gambit -d {options.gambit_database_directory} query -o {gambit_output} -f archive {' '.join(options.assembly_filenames)}"
+        run_command(gambit_cmd)
 
-    # Run the gambit command to query the assembly against the gambit database
-    gambit_cmd = "gambit -d " + str(options.gambit_database_directory) + " query -o " + str(gambit_output) + " -f  archive " + str(' '.join(options.assembly_filenames))
-    os.system(gambit_cmd)
-    if options.verbose:
-        print("Gambit command: " + gambit_cmd)
+        with open(gambit_output, 'r') as f:
+            data = json.load(f)
 
-    # Read the output file and extract the closest genomes
-    with open(gambit_output, 'r') as f:
-        data = json.load(f)
+            closest_genomes_to_distance = {}
+            for item in data['items']:
+                closest_genomes_json = item['closest_genomes']
+                close_accessions_one_genome = [g['genome']['key'] for g in closest_genomes_json]
+                close_accessions.extend(close_accessions_one_genome)
+                for g in closest_genomes_json:
+                    closest_genomes_to_distance[g['genome']['key']] = g['distance']
 
-        closest_genomes_to_distance = {}
-        for item in data['items']:
-            closest_genomes_json = item['closest_genomes']
-            close_accessions_one_genome = [g['genome']['key'] for g in closest_genomes_json]
-            
-            close_accessions.extend(close_accessions_one_genome)
-            for g in closest_genomes_json:
-                closest_genomes_to_distance[g['genome']['key']] = g['distance']
+            if options.verbose:
+                logging.info("Closest genomes and their distances:")
+                for genome, distance in closest_genomes_to_distance.items():
+                    logging.info(f"{genome}\t{distance:.6f}")
 
-        print(close_accessions)
-        if options.verbose:
-            # Print the closest genomes and their distances
-            print("Accession\tGambit_distance")
-            for genome, distance in closest_genomes_to_distance.items():
-                print(genome + "\t" + "{:.6f}".format(distance))
+        with tempfile.NamedTemporaryFile(suffix='.gs', delete=False) as input_genome_signatures_file, \
+                tempfile.NamedTemporaryFile(suffix='.gs', delete=False) as filtered_genome_signatures_file:
 
-    # Create temporary files for genome signatures
-    with tempfile.NamedTemporaryFile(suffix='.gs', delete=False) as input_genome_signatures_file, \
-            tempfile.NamedTemporaryFile(suffix='.gs', delete=False) as filtered_genome_signatures_file:
+            input_genome_signatures = input_genome_signatures_file.name
+            filtered_genome_signatures = filtered_genome_signatures_file.name
 
-        input_genome_signatures = input_genome_signatures_file.name
-        filtered_genome_signatures = filtered_genome_signatures_file.name
+            run_command(f"gambit signatures create -k 11 -p ATGAC -o {input_genome_signatures} {' '.join(options.assembly_filenames)}")
 
-        # Create signatures file for the query genome
-        os.system("gambit signatures create -k 11 -p ATGAC -o " + input_genome_signatures + " " + str(' '.join(options.assembly_filenames)))
+            with load_signatures(options.gambit_signatures_filename) as src:
+                in_gidxs = np.flatnonzero(np.in1d(src.ids, close_accessions))
+                filtered_src_ids = src.ids[in_gidxs]
+                filtered_src = src[in_gidxs]
+                out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+                dump_signatures(filtered_genome_signatures, out_sigs)
 
-        # Filter the signatures database to only include the context genomes
-        with load_signatures(options.gambit_signatures_filename) as src:
-            in_gidxs = np.flatnonzero(np.in1d(src.ids, close_accessions))
-            filtered_src_ids = src.ids[in_gidxs]
-            filtered_src = src[in_gidxs]
-            out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+            with load_signatures(filtered_genome_signatures) as main_sig, load_signatures(input_genome_signatures) as patch_sig:
+                merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
+                merged_src = SignatureList(main_sig)
+                merged_src.extend(patch_sig)
+                out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
+                dump_signatures(options.signatures_output_filename, out_sigs)
 
-            dump_signatures(filtered_genome_signatures, out_sigs)
+                pairwise_values = pairwise_matrix(out_sigs)
+                pairwise_values.to_csv(options.pairwise_output_filename, sep='\t')
 
-        # Merge the two signatures files, including the input genomes and the context genomes from the database
-        with load_signatures(filtered_genome_signatures) as main_sig, load_signatures(input_genome_signatures) as patch_sig:
-            # Merge the two signatures files
-            merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
-            merged_src = SignatureList(main_sig)
-            merged_src.extend(patch_sig)
-            out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
+            run_command(f"gambit tree -s {options.signatures_output_filename} -c {options.cpus} > {options.tree_output_filename}")
 
-            dump_signatures(options.signatures_output_filename, out_sigs)
+            os.remove(input_genome_signatures)
+            os.remove(filtered_genome_signatures)
 
-            # Output a pairwise comparison to a file
-            pairwise_values = pairwise_matrix(out_sigs)
-            pairwise_values.to_csv(options.pairwise_output_filename, sep='\t')
+    tree = Tree(options.tree_output_filename)
+    tree.set_outgroup(tree.get_midpoint_outgroup())
+    tree.ladderize()
 
-        # Create a phylogenetic tree from the merged signatures file
-        os.system("gambit tree -s " + options.signatures_output_filename + " -c " + str(options.cpus) + " > " + options.tree_output_filename)
-
-        # Remove the temporary files
-        os.remove(input_genome_signatures)
-        os.remove(filtered_genome_signatures)
-
-# Create a phylogenetic tree image
-# python -m ete3 view -t genome_tree.nwk --image-output genome_tree.png --dpi 300 --width 800
-# Read the newick file
-tree = Tree(options.tree_output_filename)
-# Midpoint root the tree
-tree.set_outgroup(tree.get_midpoint_outgroup())
-# Order the tree in descending order
-tree.ladderize()
-
-# right align the taxon names
-for n in tree.traverse():
-    n.img_style["size"] = 0
-    n.img_style["fgcolor"] = "black"
-    n.img_style["vt_line_color"] = "black"
-    n.img_style["hz_line_color"] = "black"
-    n.img_style["hz_line_width"] = 1
-    n.img_style["vt_line_width"] = 1
-    n.img_style["vt_line_type"] = 0
-    n.img_style["hz_line_type"] = 0
-    n.img_style["size"] = 0
-    n.img_style["shape"] = "square"
-    n.img_style["bgcolor"] = "white"
-
-    if n.is_leaf():
+    for n in tree.traverse():
         n.img_style["size"] = 0
-        n.img_style["shape"] = "square"
         n.img_style["fgcolor"] = "black"
-        n.img_style["bgcolor"] = "white"
         n.img_style["vt_line_color"] = "black"
         n.img_style["hz_line_color"] = "black"
         n.img_style["hz_line_width"] = 1
         n.img_style["vt_line_width"] = 1
-        n.img_style["vt_line_type"] = 0
-        n.img_style["hz_line_type"] = 0
 
-# Output the image as a png
-tree.render(options.tree_image_output_filename, w=800, units="px", dpi=300)
+        if n.is_leaf():
+            n.img_style["size"] = 0
 
+    tree.render(options.tree_image_output_filename, w=800, units="px", dpi=300)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Place a genome in context from the database',
+        usage='gambit-context [options]',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('gambit_database_directory', help='/path/to/gambit/database', type=str)
+    parser.add_argument('gambit_signatures_filename', help='/path/to/gambit/database/signatures_file.gs', type=str)
+    parser.add_argument('assembly_filenames', help='Assemblies in FASTA format, can be gzipped', type=str, nargs='+')
+
+    parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default='merged_database.gs', type=str)
+    parser.add_argument('--tree_output_filename', '-t', help='Output filename for tree (newick format)', default='genome_tree.nwk', type=str)
+    parser.add_argument('--tree_image_output_filename', '-i', help='Output filename for tree image (png format)', default='genome_tree.png', type=str)
+    parser.add_argument('--pairwise_output_filename', '-p', help='Output filename for pairwise matrix', default='pairwise.tsv', type=str)
+    parser.add_argument('--cpus', '-c', help='Number of cpus to use', type=int, default=1)
+    parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
+
+    options = parser.parse_args()
+    main(options)
