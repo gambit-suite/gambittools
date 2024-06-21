@@ -31,13 +31,13 @@ if options.extended:
             curation_version = 'Original'
 
         # Check to see if there are any children of this taxon. We wont go through the whole tree, just one level.
-        children = [row for row in main_db_connection.execute("SELECT taxa.key,taxa.name,taxa.distance_threshold,COUNT(genome_annotations.taxon_id) FROM taxa LEFT JOIN genome_annotations ON genome_annotations.taxon_id = taxa.id WHERE taxa.parent_id = "+str(t[4])+" GROUP BY taxa.id ORDER BY taxa.name ASC")]
+        children = [row for row in main_db_connection.execute("SELECT taxa.key, taxa.name, taxa.distance_threshold, COUNT(genome_annotations.taxon_id) as ngenomes FROM taxa LEFT JOIN genome_annotations ON genome_annotations.taxon_id = taxa.id WHERE taxa.parent_id = "+str(t[4])+" GROUP BY taxa.id HAVING ngenomes > 0 ORDER BY taxa.name ASC")]
         if len(children) > 0:
             genomes_total = t[3] + sum([c[3] for c in children])
             print(str(t[1]) + '\t' + str(t[2]) + '\t' + str(genomes_total) + '\t' + str(len(children)) + '\t' + curation_version)
-        else:
+        elif(t[3] > 0):
             print(str(t[1]) + '\t' + str(t[2]) + '\t' + str(t[3])+ '\t' + '0' + '\t' + curation_version)
 else:
-    taxa = [row[0] for row in main_db_connection.execute("SELECT name FROM taxa WHERE rank LIKE '"+ options.rank+"'  ORDER BY name ASC")]
+    taxa = [row[0] for row in main_db_connection.execute("SELECT DISTINCT name FROM taxa WHERE rank LIKE '"+ options.rank+"'  ORDER BY name ASC")]
     for t in taxa:
         print(str(t))
