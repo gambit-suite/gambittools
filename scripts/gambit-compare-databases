@@ -1,0 +1,45 @@
+# compare the outputs of running gambit-compare-filenames-database over two different databases with the same FASTA files.
+# this will give you an analysis of the differences and similarities.
+import pandas as pd
+import argparse
+
+def compare_species_data(file1, file2):
+    try:
+        # Load the datasets from specified CSV files
+        df1 = pd.read_csv(file1)
+        df2 = pd.read_csv(file2)
+
+        # Merge both dataframes to find common entries based on the 'query' column
+        common_df = pd.merge(df1, df2, how='inner', on='query')
+        
+        # Find entries unique to the first file
+        unique_df1 = pd.merge(df1, df2, on='query', how='outer', indicator=True).query('_merge=="left_only"').drop('_merge', axis=1)
+        
+        # Find entries unique to the second file
+        unique_df2 = pd.merge(df1, df2, on='query', how='outer', indicator=True).query('_merge=="right_only"').drop('_merge', axis=1)
+
+        # Save the common and unique entries to separate CSV files for further analysis
+        common_df.to_csv("common_species.csv", index=False)
+        unique_df1.to_csv("unique_to_file1_species.csv", index=False)
+        unique_df2.to_csv("unique_to_file2_species.csv", index=False)
+
+        print("Comparison complete. Files saved: 'common_species.csv', 'unique_to_file1_species.csv', 'unique_to_file2_species.csv'")
+        
+    except Exception as e:
+        # Provide error details if the process fails
+        print(f"An error occurred: {e}")
+
+def main():
+    # Set up command-line argument parsing
+    parser = argparse.ArgumentParser(description="Compare species data across two CSV files generated with gambit-compare-filenames-database to identify common and unique entries.")
+    parser.add_argument("file1", help="The path to the first CSV file to be compared.")
+    parser.add_argument("file2", help="The path to the second CSV file to be compared.")
+    
+    # Parse arguments from the command line
+    args = parser.parse_args()
+
+    # Call the function with the provided file paths
+    compare_species_data(args.file1, args.file2)
+
+if __name__ == "__main__":
+    main()
