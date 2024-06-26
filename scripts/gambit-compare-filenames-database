@@ -1,0 +1,68 @@
+import pandas as pd
+import argparse
+
+def process_species_data(filename):
+    try:
+        # Load the data from the CSV file, ensuring we ignore repeated header lines
+        df = pd.read_csv(filename)
+        header_row = ['query', 'predicted.name', 'predicted.rank', 'predicted.ncbi_id', 'predicted.threshold',
+                      'closest.distance', 'closest.description', 'next.name', 'next.rank', 'next.ncbi_id', 'next.threshold']
+        df = df[~df.apply(lambda x: (x == header_row).all(), axis=1)]
+
+        # Check if DataFrame is empty after removing header duplicates
+        if df.empty:
+            print("No data available after filtering headers.")
+            return
+        
+        # Remove any duplicate rows to ensure uniqueness of data
+        df = df.drop_duplicates()
+        
+        # Extract and clean species names for comparison from 'query' column
+        df['Extracted_Species'] = df['query'].apply(lambda x: ' '.join(x.split('_')[:2]) if len(x.split('_')) > 1 else None)
+        
+        # Remove suffixes from genus or species names in 'predicted.name' field
+        df['Cleaned_Predicted_Name'] = df['predicted.name'].str.replace(r'(\w+)_\w+\s', r'\1 ', regex=True)
+        df['Cleaned_Predicted_Name'] = df['Cleaned_Predicted_Name'].str.replace(r'(\w+)_\w+$', r'\1', regex=True)
+
+        # Extract the species part for focused comparison
+        df['Extracted_Species_Part'] = df['Extracted_Species'].str.split().str[1]
+        df['Cleaned_Predicted_Species_Part'] = df['Cleaned_Predicted_Name'].str.split().str[1]
+
+        # Check for exact matches and species level matches
+        df['Exact_match'] = df['Extracted_Species'].str.lower() == df['Cleaned_Predicted_Name'].str.lower()
+        df['Species_Match'] = df['Extracted_Species_Part'].str.lower() == df['Cleaned_Predicted_Species_Part'].str.lower()
+
+        # Summarize results
+        empty_count = df['predicted.name'].isna().sum()
+        genus_count = (df['predicted.rank'] == 'genus').sum()
+        total_rows = len(df)
+        species_match_count = df['Species_Match'].sum()
+        exact_match_count = df['Exact_match'].sum()
+        no_match_count = total_rows - species_match_count
+        
+        # Print statistics
+        print(f"Total rows: {total_rows}")
+        print(f"Exact match count: {exact_match_count}")
+        print(f"Species match count: {species_match_count}")
+        print(f"Species non-match count: {no_match_count}")
+        print(f"Empty 'predicted.name' cells: {empty_count}")
+        print(f"Genus level calls: {genus_count}")
+
+        # Save non-matching entries for further analysis
+        df_no_match = df[df['Species_Match'] == False]
+        df_no_match.to_csv("non_matching_species_only.csv", index=False)
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def main():
+    # Set up argument parsing
+    parser = argparse.ArgumentParser(description="Compare species names from a CSV of GAMBIT results against expected names encoded in the sample filenames.")
+    parser.add_argument("filename", help="The path to the CSV file of GAMBIT results to process.")
+    args = parser.parse_args()
+
+    # Process the provided file
+    process_species_data(args.filename)
+
+if __name__ == "__main__":
+    main()
